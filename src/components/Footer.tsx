@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Heart, Code } from 'lucide-react';
+import { Heart, Code, Github, Linkedin, Mail, MapPin, Globe } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export function Footer() {
@@ -12,17 +12,17 @@ export function Footer() {
     {
       name: 'LinkedIn',
       url: 'https://www.linkedin.com/in/jaalsima/',
-      icon: '🌐',
+      icon: <Linkedin className="w-5 h-5" />,
     },
     {
       name: 'GitHub',
       url: 'https://github.com/Coderlaraman/',
-      icon: '💻',
+      icon: <Github className="w-5 h-5" />,
     },
     {
       name: 'Email',
       url: 'mailto:coderman1980@gmail.com',
-      icon: '📧',
+      icon: <Mail className="w-5 h-5" />,
     },
   ];
 
@@ -51,7 +51,7 @@ export function Footer() {
                   className="text-neutral-400 hover:text-accent-blue transition-colors duration-200"
                   title={link.name}
                 >
-                  <span className="text-xl">{link.icon}</span>
+                  {link.icon}
                 </motion.a>
               ))}
             </div>
@@ -103,10 +103,21 @@ export function Footer() {
           {/* Contact Info */}
           <div>
             <h3 className="text-lg font-semibold mb-4">{t('footer.contact')}</h3>
-            <div className="space-y-2 text-neutral-400">
-              <p>📧 coderman1980@gmail.com</p>
-              <p>📍 Colombia</p>
-              <p>🌐 {t('footer.available')}</p>
+            <div className="space-y-4 text-neutral-400">
+              <div className="flex items-center">
+                <Mail className="w-5 h-5 mr-3 text-accent-blue" />
+                <a href="mailto:coderman1980@gmail.com" className="hover:text-white transition-colors">
+                  coderman1980@gmail.com
+                </a>
+              </div>
+              <div className="flex items-center">
+                <MapPin className="w-5 h-5 mr-3 text-accent-red" />
+                <span>Colombia</span>
+              </div>
+              <div className="flex items-center">
+                <Globe className="w-5 h-5 mr-3 text-accent-green" />
+                <span>{t('footer.available')}</span>
+              </div>
             </div>
           </div>
         </div>

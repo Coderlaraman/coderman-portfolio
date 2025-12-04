@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, User, MessageSquare, Send, CheckCircle, AlertCircle } from 'lucide-react';
+import { Mail, User, MessageSquare, Send, CheckCircle, AlertCircle, Github, Linkedin } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -57,17 +57,17 @@ export function ContactSection() {
     {
       name: 'LinkedIn',
       url: 'https://www.linkedin.com/in/jaalsima/',
-      icon: '🌐',
+      icon: <Linkedin className="w-5 h-5" />,
     },
     {
       name: 'GitHub',
       url: 'https://github.com/Coderlaraman/',
-      icon: '💻',
+      icon: <Github className="w-5 h-5" />,
     },
     {
       name: 'Email',
       url: 'mailto:coderman1980@gmail.com',
-      icon: '📧',
+      icon: <Mail className="w-5 h-5" />,
     },
   ];
 
@@ -162,7 +162,7 @@ export function ContactSection() {
                       rel="noopener noreferrer"
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.95 }}
-                      className="flex items-center px-4 py-2 bg-neutral-100 dark:bg-neutral-800 hover:bg-accent-blue hover:text-white dark:hover:bg-accent-blue rounded-lg transition-all duration-200"
+                      className="flex items-center px-4 py-2 bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white hover:bg-accent-blue hover:text-white rounded-lg transition-all duration-200"
                     >
                       <span className="mr-2">{link.icon}</span>
                       {link.name}
