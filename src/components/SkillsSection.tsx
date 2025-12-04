@@ -56,7 +56,9 @@ export function SkillsSection() {
   
   const filteredSkills = (selectedCategory === 'all' 
     ? skills 
-    : skills.filter(skill => skill.category === selectedCategory)).filter(skill => skill.visible);
+    : skills.filter(skill => skill.category === selectedCategory))
+    .filter(skill => skill.visible)
+    .sort((a, b) => b.proficiency - a.proficiency);
 
   const getProficiencyColor = (proficiency: number) => {
     if (proficiency >= 90) return 'bg-accent-green';
