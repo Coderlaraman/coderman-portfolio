@@ -10,10 +10,13 @@ import { SectionWrapper } from '@/components/SectionWrapper';
 export function ProjectsSection() {
   const { t } = useLanguage();
   const [projects, setProjects] = useState<Project[]>([]);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState<{ [key: string]: number }>({});
+  const [showAll, setShowAll] = useState(false);
+  const INITIAL_PROJECT_COUNT = 3;
 
   useEffect(() => {
     fetchProjects();
@@ -22,13 +25,23 @@ export function ProjectsSection() {
   const fetchProjects = async () => {
     try {
       setLoading(true);
-      const data = await getProjects({ featured: true });
-      setProjects(data);
+      // Fetch all projects, not just featured
+      const data = await getProjects();
+      setAllProjects(data);
+      // Initially show only featured or first N projects
+      const featured = data.filter(p => p.featured);
+      const initialProjects = featured.length > 0 ? featured : data.slice(0, INITIAL_PROJECT_COUNT);
+      setProjects(initialProjects);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch projects');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleViewMore = () => {
+    setProjects(allProjects);
+    setShowAll(true);
   };
 
   const nextImage = (projectId: string, totalImages: number) => {
@@ -119,110 +132,124 @@ export function ProjectsSection() {
             <p className="text-neutral-600 dark:text-neutral-400">{t('projects.noProjects')}</p>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project, index) => (
-              <motion.div
-                key={project.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className="bg-white dark:bg-neutral-900 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer"
-                onClick={() => setSelectedProject(project)}
-              >
-                {/* Project Image */}
-                <div className="relative h-48 bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
-                  {project.imageUrls.length > 0 && (
-                    <img
-                      src={project.imageUrls[currentImageIndex[project.id] || 0]}
-                      alt={project.title}
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                  {project.imageUrls.length > 1 && (
-                    <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
-                      {project.imageUrls.map((_, imgIndex) => (
-                        <button
-                          key={imgIndex}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCurrentImageIndex(prev => ({ ...prev, [project.id]: imgIndex }));
-                          }}
-                          className={`w-2 h-2 rounded-full transition-colors duration-200 ${
-                            (currentImageIndex[project.id] || 0) === imgIndex
-                              ? 'bg-white'
-                              : 'bg-white/50'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  )}
-                  <div className="absolute top-2 right-2">
-                    {project.featured && (
-                      <div className="bg-accent-green text-white px-2 py-1 rounded-full text-xs font-medium">
-                        Featured
+          <>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {projects.map((project, index) => (
+                <motion.div
+                  key={project.id}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: index * 0.1 }}
+                  viewport={{ once: true }}
+                  className="bg-white dark:bg-neutral-900 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer"
+                  onClick={() => setSelectedProject(project)}
+                >
+                  {/* Project Image */}
+                  <div className="relative h-48 bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
+                    {project.imageUrls.length > 0 && (
+                      <img
+                        src={project.imageUrls[currentImageIndex[project.id] || 0]}
+                        alt={project.title}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                    {project.imageUrls.length > 1 && (
+                      <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
+                        {project.imageUrls.map((_, imgIndex) => (
+                          <button
+                            key={imgIndex}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCurrentImageIndex(prev => ({ ...prev, [project.id]: imgIndex }));
+                            }}
+                            className={`w-2 h-2 rounded-full transition-colors duration-200 ${
+                              (currentImageIndex[project.id] || 0) === imgIndex
+                                ? 'bg-white'
+                                : 'bg-white/50'
+                            }`}
+                          />
+                        ))}
                       </div>
                     )}
-                  </div>
-                </div>
-
-                {/* Project Content */}
-                <div className="p-6">
-                  <h3 className="text-xl font-semibold text-neutral-900 dark:text-white mb-2">
-                    {project.title}
-                  </h3>
-                  <p className="text-neutral-600 dark:text-neutral-400 mb-4 line-clamp-2">
-                    {project.description}
-                  </p>
-
-                  {/* Technologies */}
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {project.technologies.slice(0, 3).map((tech) => (
-                      <span
-                        key={tech}
-                        className="px-2 py-1 bg-accent-blue/10 text-accent-blue dark:bg-accent-blue/20 dark:text-accent-blue text-xs rounded-full font-medium"
-                      >
-                        {tech}
-                      </span>
-                    ))}
-                    {project.technologies.length > 3 && (
-                      <span className="px-2 py-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 text-xs rounded-full">
-                        +{project.technologies.length - 3}
-                      </span>
-                    )}
+                    <div className="absolute top-2 right-2">
+                      {project.featured && (
+                        <div className="bg-accent-green text-white px-2 py-1 rounded-full text-xs font-medium">
+                          Featured
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex space-x-3">
-                    {project.projectUrl && (
-                      <a
-                        href={project.projectUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center text-sm text-accent-blue hover:text-accent-blue-dark dark:text-accent-blue dark:hover:text-accent-blue-dark transition-colors duration-200"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <ExternalLink className="w-4 h-4 mr-1" />
-                        {t('projects.viewProject')}
-                      </a>
-                    )}
-                    {project.codeUrl && (
-                      <a
-                        href={project.codeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors duration-200"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Github className="w-4 h-4 mr-1" />
-                        {t('projects.viewCode')}
-                      </a>
-                    )}
+                  {/* Project Content */}
+                  <div className="p-6">
+                    <h3 className="text-xl font-semibold text-neutral-900 dark:text-white mb-2">
+                      {project.title}
+                    </h3>
+                    <p className="text-neutral-600 dark:text-neutral-400 mb-4 line-clamp-2">
+                      {project.description}
+                    </p>
+
+                    {/* Technologies */}
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {project.technologies.slice(0, 3).map((tech) => (
+                        <span
+                          key={tech}
+                          className="px-2 py-1 bg-accent-blue/10 text-accent-blue dark:bg-accent-blue/20 dark:text-accent-blue text-xs rounded-full font-medium"
+                        >
+                          {tech}
+                        </span>
+                      ))}
+                      {project.technologies.length > 3 && (
+                        <span className="px-2 py-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 text-xs rounded-full">
+                          +{project.technologies.length - 3}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex space-x-3">
+                      {project.projectUrl && (
+                        <a
+                          href={project.projectUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center text-sm text-accent-blue hover:text-accent-blue-dark dark:text-accent-blue dark:hover:text-accent-blue-dark transition-colors duration-200"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink className="w-4 h-4 mr-1" />
+                          {t('projects.viewProject')}
+                        </a>
+                      )}
+                      {project.codeUrl && (
+                        <a
+                          href={project.codeUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors duration-200"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Github className="w-4 h-4 mr-1" />
+                          {t('projects.viewCode')}
+                        </a>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* View More Button */}
+            {!showAll && allProjects.length > projects.length && (
+              <div className="mt-12 text-center">
+                <button
+                  onClick={handleViewMore}
+                  className="px-8 py-3 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-full font-medium hover:scale-105 transition-transform duration-200 shadow-lg"
+                >
+                  View More Projects
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
