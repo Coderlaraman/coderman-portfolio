@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/database';
 import { ContactMessage } from '@/lib/database/types';
+import { sendContactEmail } from '@/lib/email';
 
 // GET /api/contact-messages - Get all contact messages
 export async function GET(request: Request) {
@@ -29,7 +30,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, email, message, ipAddress, userAgent } = body;
+    const { name, email, subject, message, ipAddress, userAgent } = body;
 
     // Basic validation
     if (!name || !email || !message) {
@@ -59,10 +60,24 @@ export async function POST(request: Request) {
     const newMessage = await db.createContactMessage({
       name: name.trim(),
       email: email.trim().toLowerCase(),
+      subject: subject ? subject.trim() : undefined,
       message: message.trim(),
       ipAddress,
       userAgent,
     });
+
+    // Send email notification
+    try {
+      await sendContactEmail({
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        subject: subject ? subject.trim() : undefined,
+        message: message.trim(),
+      });
+    } catch (emailError) {
+      console.error('Failed to send email notification:', emailError);
+      // We don't return an error here because the message was successfully saved to the DB
+    }
 
     return NextResponse.json(newMessage, { status: 201 });
   } catch (error) {

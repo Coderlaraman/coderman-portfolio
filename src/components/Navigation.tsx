@@ -62,7 +62,7 @@ export function Navigation() {
           <div className="flex items-center">
             <Code className="w-8 h-8 text-accent-blue dark:text-accent-blue" />
             <span className="ml-2 text-xl font-semibold text-neutral-900 dark:text-white">
-              Jaime Sierra
+              Coderman
             </span>
           </div>
 

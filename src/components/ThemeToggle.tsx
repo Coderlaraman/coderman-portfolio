@@ -6,7 +6,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useEffect, useState } from 'react';
 
 export function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const { t } = useLanguage();
   const [mounted, setMounted] = useState(false);
 
@@ -22,6 +22,8 @@ export function ThemeToggle() {
     );
   }
 
+  const currentTheme = theme === 'system' ? resolvedTheme : theme;
+
   const themes = [
     { value: 'light', icon: Sun, label: t('theme.light') },
     { value: 'dark', icon: Moon, label: t('theme.dark') },
@@ -34,9 +36,11 @@ export function ThemeToggle() {
         className="flex items-center justify-center w-10 h-10 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors duration-200"
         aria-label="Toggle theme"
       >
-        {theme === 'light' && <Sun className="w-5 h-5 text-yellow-500" />}
-        {theme === 'dark' && <Moon className="w-5 h-5 text-blue-400" />}
-        {theme === 'system' && <Monitor className="w-5 h-5 text-neutral-500" />}
+        {currentTheme === 'light' ? (
+          <Sun className="w-5 h-5 text-yellow-500" />
+        ) : (
+          <Moon className="w-5 h-5 text-blue-400" />
+        )}
       </button>
       
       <div className="absolute top-full right-0 mt-2 w-40 bg-white dark:bg-neutral-800 rounded-lg shadow-lg border border-neutral-200 dark:border-neutral-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">

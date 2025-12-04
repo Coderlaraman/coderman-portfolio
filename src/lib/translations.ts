@@ -43,6 +43,7 @@ export const translations = {
         mobile: 'Mobile',
         devops: 'DevOps',
         other: 'Other',
+        tools: 'Tools',
       },
     },
     contact: {
@@ -149,6 +150,7 @@ export const translations = {
         mobile: 'Móvil',
         devops: 'DevOps',
         other: 'Otras',
+        tools: 'Herramientas',
       },
     },
     contact: {

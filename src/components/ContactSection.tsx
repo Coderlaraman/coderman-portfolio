@@ -56,17 +56,17 @@ export function ContactSection() {
   const socialLinks = [
     {
       name: 'LinkedIn',
-      url: 'https://linkedin.com/in/jaime-alberto-sierra-mazo',
+      url: 'https://www.linkedin.com/in/jaalsima/',
       icon: '🌐',
     },
     {
       name: 'GitHub',
-      url: 'https://github.com/jaime-alberto-sierra-mazo',
+      url: 'https://github.com/Coderlaraman/',
       icon: '💻',
     },
     {
       name: 'Email',
-      url: 'mailto:jaime.alberto.sierra.mazo@gmail.com',
+      url: 'mailto:coderman1980@gmail.com',
       icon: '📧',
     },
   ];
@@ -114,7 +114,7 @@ export function ContactSection() {
                       {t('contact.email')}
                     </h4>
                     <p className="text-neutral-600 dark:text-neutral-400">
-                      jaime.alberto.sierra.mazo@gmail.com
+                      coderman1980@gmail.com
                     </p>
                   </div>
                 </div>

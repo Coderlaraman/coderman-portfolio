@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -20,6 +22,11 @@
   --accent-blue-dark: #2563eb;
   --accent-red: #ef4444;
   --accent-red-dark: #dc2626;
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 @theme inline {
@@ -47,13 +54,6 @@
   --animation-slide-up: slideUp 0.6s ease-out;
   --animation-typewriter: typewriter 2s steps(40) 1s both;
   --animation-blink: blink 1s infinite;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 @keyframes fadeIn {

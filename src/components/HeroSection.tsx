@@ -94,7 +94,7 @@ export function HeroSection() {
         >
           const developer = {'{'}
           <br />
-          &nbsp;&nbsp;name: "Jaime",
+          &nbsp;&nbsp;name: "Coderman",
           <br />
           &nbsp;&nbsp;role: "Full-Stack",
           <br />
@@ -128,7 +128,7 @@ export function HeroSection() {
 
         {/* Terminal window */}
         <motion.div
-          className="absolute top-1/3 right-1/4 w-64 h-32 bg-neutral-900 dark:bg-black rounded-lg shadow-xl border border-neutral-700"
+          className="absolute top-1/3 right-10 w-64 h-32 bg-neutral-900 dark:bg-black rounded-lg shadow-xl border border-neutral-700 hidden lg:block"
           animate={{
             scale: [1, 1.02, 1],
           }}
@@ -144,7 +144,7 @@ export function HeroSection() {
               <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
               <div className="w-3 h-3 bg-green-500 rounded-full"></div>
             </div>
-            <span className="ml-3 text-xs text-neutral-400">jaime@portfolio:~</span>
+            <span className="ml-3 text-xs text-neutral-400">coderman-portfolio:~</span>
           </div>
           <div className="p-3 text-green-400 text-xs font-mono">
             <div>$ npm run portfolio</div>

@@ -11,17 +11,17 @@ export function Footer() {
   const socialLinks = [
     {
       name: 'LinkedIn',
-      url: 'https://linkedin.com/in/jaime-alberto-sierra-mazo',
+      url: 'https://www.linkedin.com/in/jaalsima/',
       icon: '🌐',
     },
     {
       name: 'GitHub',
-      url: 'https://github.com/jaime-alberto-sierra-mazo',
+      url: 'https://github.com/Coderlaraman/',
       icon: '💻',
     },
     {
       name: 'Email',
-      url: 'mailto:jaime.alberto.sierra.mazo@gmail.com',
+      url: 'mailto:coderman1980@gmail.com',
       icon: '📧',
     },
   ];
@@ -104,7 +104,7 @@ export function Footer() {
           <div>
             <h3 className="text-lg font-semibold mb-4">{t('footer.contact')}</h3>
             <div className="space-y-2 text-neutral-400">
-              <p>📧 jaime.alberto.sierra.mazo@gmail.com</p>
+              <p>📧 coderman1980@gmail.com</p>
               <p>📍 Colombia</p>
               <p>🌐 {t('footer.available')}</p>
             </div>
@@ -118,10 +118,10 @@ export function Footer() {
             <Heart className="w-4 h-4 mx-1 text-red-500" />
             <span>{t('footer.and')}</span>
             <Code className="w-4 h-4 mx-1 text-accent-blue" />
-            <span>{t('footer.by')} Jaime Sierra</span>
+            <span>{t('footer.by')} Coderman</span>
           </div>
           <p className="text-neutral-500 text-sm">
-            © {currentYear} Jaime Alberto Sierra Mazo. {t('footer.rightsReserved')}
+            © {currentYear} Coderman. {t('footer.rightsReserved')}
           </p>
         </div>
       </div>

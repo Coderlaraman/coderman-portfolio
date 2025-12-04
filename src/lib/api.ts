@@ -61,6 +61,7 @@ export async function getSkills(options?: { category?: string; limit?: number })
 export async function createContactMessage(data: {
   name: string;
   email: string;
+  subject?: string;
   message: string;
   ipAddress?: string;
   userAgent?: string;
