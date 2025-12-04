@@ -40,8 +40,26 @@ const Tabs = ({ activeTab, setActiveTab }: { activeTab: string, setActiveTab: (t
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState('projects');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
+  const [step, setStep] = useState<'request' | 'verify'>('request');
+  const [loading, setLoading] = useState(false);
   const { t } = useLanguage();
+
+  // Check auth status on mount
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const res = await fetch('/api/auth/check');
+      if (res.ok) {
+        setIsAuthenticated(true);
+      }
+    } catch (error) {
+      console.error('Auth check failed:', error);
+    }
+  };
 
   // Projects State
   const [projects, setProjects] = useState<Project[]>([]);
@@ -65,13 +83,59 @@ export default function AdminPage() {
     setSkills(skillsData);
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleRequestCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simple hardcoded password for demo purposes
-    if (password === 'admin123') {
-      setIsAuthenticated(true);
-    } else {
-      alert('Invalid password');
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/request-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      if (res.ok) {
+        setStep('verify');
+      } else {
+        alert('Failed to request code');
+      }
+    } catch (error) {
+      console.error('Request code error:', error);
+      alert('An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      
+      if (res.ok) {
+        setIsAuthenticated(true);
+      } else {
+        alert('Invalid code');
+      }
+    } catch (error) {
+      console.error('Verify code error:', error);
+      alert('An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      setIsAuthenticated(false);
+      setStep('request');
+      setCode('');
+    } catch (error) {
+      console.error('Logout error:', error);
     }
   };
 
@@ -80,23 +144,50 @@ export default function AdminPage() {
       <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-950">
         <div className="bg-white dark:bg-neutral-900 p-8 rounded-lg shadow-lg max-w-md w-full">
           <h1 className="text-2xl font-bold mb-6 text-center">Admin Login</h1>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full bg-accent-blue text-white py-2 rounded hover:bg-accent-blue-dark transition-colors"
-            >
-              Login
-            </button>
-          </form>
+          
+          {step === 'request' ? (
+            <form onSubmit={handleRequestCode} className="space-y-4">
+              <div className="text-center mb-6 text-neutral-600 dark:text-neutral-400">
+                <p>Click the button below to send a secure login code to your configured admin email address.</p>
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-accent-blue text-white py-2 rounded hover:bg-accent-blue-dark transition-colors disabled:opacity-50"
+              >
+                {loading ? 'Sending Code...' : 'Send Login Code'}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyCode} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Verification Code</label>
+                <input
+                  type="text"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-center text-2xl tracking-widest"
+                  required
+                  placeholder="123456"
+                  maxLength={6}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-accent-blue text-white py-2 rounded hover:bg-accent-blue-dark transition-colors disabled:opacity-50"
+              >
+                {loading ? 'Verifying...' : 'Login'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setStep('request')}
+                className="w-full text-sm text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
+              >
+                Back to Request
+              </button>
+            </form>
+          )}
         </div>
       </div>
     );
@@ -108,7 +199,7 @@ export default function AdminPage() {
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">Portfolio Admin</h1>
           <button
-            onClick={() => setIsAuthenticated(false)}
+            onClick={handleLogout}
             className="text-red-500 hover:text-red-600 font-medium"
           >
             Logout

@@ -63,3 +63,12 @@ model SiteContent {
 
   @@unique([key, language])
 }
+
+model AdminCode {
+  id        String   @id @default(cuid())
+  code      String
+  email     String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}

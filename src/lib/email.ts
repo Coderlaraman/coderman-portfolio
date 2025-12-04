@@ -68,3 +68,41 @@ ${message}
     throw error;
   }
 }
+
+export async function sendAdminLoginCode(email: string, code: string) {
+  // Verify connection configuration
+  try {
+    await transporter.verify();
+  } catch (error) {
+    console.error('Error verifying email transporter:', error);
+    throw new Error('Email service configuration error');
+  }
+
+  // Send mail with defined transport object
+  try {
+    const info = await transporter.sendMail({
+      from: `"Portfolio Admin" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'Admin Login Code',
+      text: `Your admin login code is: ${code}`,
+      html: `
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; text-align: center;">
+  <h2 style="color: #333;">Admin Login Code</h2>
+  <p>Use the following code to log in to your portfolio admin panel:</p>
+  
+  <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0; font-size: 24px; font-weight: bold; letter-spacing: 5px;">
+    ${code}
+  </div>
+
+  <p style="color: #777; font-size: 12px;">This code will expire in 10 minutes.</p>
+</div>
+      `,
+    });
+
+    console.log('Admin code sent: %s', info.messageId);
+    return info;
+  } catch (error) {
+    console.error('Error sending admin code:', error);
+    throw error;
+  }
+}
