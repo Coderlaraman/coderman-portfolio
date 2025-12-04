@@ -24,6 +24,7 @@ export interface Skill {
   icon?: string;
   description?: string;
   order: number;
+  visible: boolean;
 }
 
 export interface ContactMessage {

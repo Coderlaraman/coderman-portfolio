@@ -5,15 +5,14 @@ import { db } from '@/lib/database';
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category');
-    const limit = searchParams.get('limit');
+    const category = searchParams.get('category') || undefined;
+    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined;
 
-    const options = {
-      category: category || undefined,
-      limit: limit ? parseInt(limit) : undefined,
-    };
+    const skills = await db.getSkills({
+      category,
+      limit,
+    });
 
-    const skills = await db.getSkills(options);
     return NextResponse.json(skills);
   } catch (error) {
     console.error('Error fetching skills:', error);
@@ -24,42 +23,90 @@ export async function GET(request: Request) {
   }
 }
 
-// POST /api/skills - Create a new skill (admin only)
+// POST /api/skills - Create a new skill
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     
-    // Basic validation
-    const requiredFields = ['name', 'category', 'proficiency'];
-    for (const field of requiredFields) {
-      if (!body[field]) {
-        return NextResponse.json(
-          { error: `${field} is required` },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Validate proficiency range
-    if (body.proficiency < 0 || body.proficiency > 100) {
-      return NextResponse.json(
-        { error: 'Proficiency must be between 0 and 100' },
-        { status: 400 }
-      );
-    }
-
-    const newSkill = await db.createSkill({
+    // Ensure default values
+    const skillData = {
       ...body,
+      proficiency: body.proficiency || 50,
       order: body.order || 0,
-      icon: body.icon || undefined,
-      description: body.description || undefined,
-    });
+      visible: body.visible !== undefined ? body.visible : true,
+    };
+
+    const newSkill = await db.createSkill(skillData);
 
     return NextResponse.json(newSkill, { status: 201 });
   } catch (error) {
     console.error('Error creating skill:', error);
     return NextResponse.json(
       { error: 'Failed to create skill' },
+      { status: 500 }
+    );
+  }
+}
+
+// PUT /api/skills - Update a skill
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, ...updates } = body;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Skill ID is required' },
+        { status: 400 }
+      );
+    }
+
+    const updatedSkill = await db.updateSkill(id, updates);
+
+    if (!updatedSkill) {
+      return NextResponse.json(
+        { error: 'Skill not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(updatedSkill);
+  } catch (error) {
+    console.error('Error updating skill:', error);
+    return NextResponse.json(
+      { error: 'Failed to update skill' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/skills - Delete a skill
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Skill ID is required' },
+        { status: 400 }
+      );
+    }
+
+    const success = await db.deleteSkill(id);
+
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Skill not found or could not be deleted' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting skill:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete skill' },
       { status: 500 }
     );
   }

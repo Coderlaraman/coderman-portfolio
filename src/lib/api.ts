@@ -18,8 +18,21 @@ async function fetchWithError<T>(url: string, options?: RequestInit): Promise<T>
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-      throw new Error(error.error || `HTTP error! status: ${response.status}`);
+      let errorInfo = { error: 'Unknown error' };
+      try {
+        const text = await response.text();
+        if (text) {
+          try {
+            errorInfo = JSON.parse(text);
+          } catch {
+            errorInfo = { error: text };
+          }
+        }
+      } catch (e) {
+        // Failed to read response text
+      }
+      
+      throw new Error(errorInfo.error || `HTTP error! status: ${response.status}`);
     }
 
     return await response.json();
@@ -41,6 +54,29 @@ export async function getProjects(options?: { featured?: boolean; limit?: number
   return fetchWithError<Project[]>(url);
 }
 
+export async function createProject(project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>): Promise<Project> {
+  const url = `${API_BASE_URL}/api/projects`;
+  return fetchWithError<Project>(url, {
+    method: 'POST',
+    body: JSON.stringify(project),
+  });
+}
+
+export async function updateProject(id: string, updates: Partial<Project>): Promise<Project> {
+  const url = `${API_BASE_URL}/api/projects`;
+  return fetchWithError<Project>(url, {
+    method: 'PUT',
+    body: JSON.stringify({ id, ...updates }),
+  });
+}
+
+export async function deleteProject(id: string): Promise<void> {
+  const url = `${API_BASE_URL}/api/projects?id=${id}`;
+  return fetchWithError<void>(url, {
+    method: 'DELETE',
+  });
+}
+
 export async function getProjectById(id: string): Promise<Project | null> {
   // Since we don't have a specific endpoint for single projects, we'll fetch all and filter
   const projects = await getProjects();
@@ -55,6 +91,47 @@ export async function getSkills(options?: { category?: string; limit?: number })
   
   const url = `${API_BASE_URL}/api/skills${params.toString() ? `?${params.toString()}` : ''}`;
   return fetchWithError<Skill[]>(url);
+}
+
+export async function createSkill(skill: Omit<Skill, 'id'>): Promise<Skill> {
+  const url = `${API_BASE_URL}/api/skills`;
+  return fetchWithError<Skill>(url, {
+    method: 'POST',
+    body: JSON.stringify(skill),
+  });
+}
+
+export async function updateSkill(id: string, updates: Partial<Skill>): Promise<Skill> {
+  const url = `${API_BASE_URL}/api/skills`;
+  return fetchWithError<Skill>(url, {
+    method: 'PUT',
+    body: JSON.stringify({ id, ...updates }),
+  });
+}
+
+export async function deleteSkill(id: string): Promise<void> {
+  const url = `${API_BASE_URL}/api/skills?id=${id}`;
+  return fetchWithError<void>(url, {
+    method: 'DELETE',
+  });
+}
+
+// File Upload API
+export async function uploadFile(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${API_BASE_URL}/api/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to upload file');
+  }
+
+  const data = await response.json();
+  return data.url;
 }
 
 // Contact Messages API functions
