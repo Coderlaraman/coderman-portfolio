@@ -355,6 +355,7 @@ function ProjectsManager({ projects, setProjects }: { projects: Project[], setPr
 function SkillsManager({ skills, setSkills }: { skills: Skill[], setSkills: any }) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formData, setFormData] = useState<Partial<Skill>>({});
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -393,6 +394,25 @@ function SkillsManager({ skills, setSkills }: { skills: Skill[], setSkills: any 
     } catch (error) {
       console.error('Failed to toggle skill visibility:', error);
       alert('Failed to toggle skill visibility. Please try again.');
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const url = await uploadFile(file, 'skills');
+      setFormData({
+        ...formData,
+        icon: url
+      });
+    } catch (error) {
+      console.error('Failed to upload file:', error);
+      alert('Failed to upload file. Please try again.');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -436,7 +456,7 @@ function SkillsManager({ skills, setSkills }: { skills: Skill[], setSkills: any 
                 <select
                   value={formData.category || 'frontend'}
                   onChange={e => setFormData({...formData, category: e.target.value as any})}
-                  className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent"
+                  className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
                 >
                   <option value="frontend">Frontend</option>
                   <option value="backend">Backend</option>
@@ -459,13 +479,43 @@ function SkillsManager({ skills, setSkills }: { skills: Skill[], setSkills: any 
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Icon (Lucide name or URL)</label>
-                <input
-                  value={formData.icon || ''}
-                  onChange={e => setFormData({...formData, icon: e.target.value})}
-                  className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent"
-                  placeholder="e.g., react, database, or http://..."
-                />
+                <label className="block text-sm font-medium mb-1">Icon / Image</label>
+                <div className="flex items-center gap-4">
+                  {formData.icon && (
+                    <div className="relative w-16 h-16 bg-neutral-100 dark:bg-neutral-800 rounded flex items-center justify-center overflow-hidden">
+                      {formData.icon.startsWith('/') || formData.icon.startsWith('http') ? (
+                        <img src={formData.icon} alt="Skill icon" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-lg font-bold">{formData.icon.substring(0, 2)}</span>
+                      )}
+                    </div>
+                  )}
+                  
+                  <div className="flex-1">
+                    <input
+                      value={formData.icon || ''}
+                      onChange={e => setFormData({...formData, icon: e.target.value})}
+                      className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent mb-2"
+                      placeholder="e.g., react, database, or http://..."
+                    />
+                    
+                    <label className="flex items-center justify-center p-2 border-2 border-dashed border-neutral-300 dark:border-neutral-700 rounded cursor-pointer hover:border-accent-blue transition-colors">
+                      {isUploading ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-accent-blue mr-2" />
+                      ) : (
+                        <Upload className="w-4 h-4 text-neutral-400 mr-2" />
+                      )}
+                      <span className="text-sm text-neutral-500">Upload Image</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                        disabled={isUploading}
+                      />
+                    </label>
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center space-x-2">
@@ -495,9 +545,12 @@ function SkillsManager({ skills, setSkills }: { skills: Skill[], setSkills: any 
         {skills.map(skill => (
           <div key={skill.id} className={`bg-white dark:bg-neutral-900 p-4 rounded-lg shadow flex justify-between items-center ${!skill.visible ? 'opacity-60' : ''}`}>
             <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 bg-neutral-100 dark:bg-neutral-800 rounded flex items-center justify-center">
-                {/* Placeholder for dynamic icon rendering */}
-                <span className="text-xs">{skill.icon?.substring(0, 2)}</span>
+              <div className="w-10 h-10 bg-neutral-100 dark:bg-neutral-800 rounded flex items-center justify-center overflow-hidden">
+                {skill.icon && (skill.icon.startsWith('/') || skill.icon.startsWith('http')) ? (
+                  <img src={skill.icon} alt={skill.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-xs font-bold">{skill.icon?.substring(0, 2) || skill.name.substring(0, 2)}</span>
+                )}
               </div>
               <div>
                 <h3 className="font-semibold">{skill.name}</h3>

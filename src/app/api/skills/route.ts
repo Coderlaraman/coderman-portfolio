@@ -31,6 +31,7 @@ export async function POST(request: Request) {
     // Ensure default values
     const skillData = {
       ...body,
+      category: body.category || 'frontend', // Ensure category is set
       proficiency: body.proficiency || 50,
       order: body.order || 0,
       visible: body.visible !== undefined ? body.visible : true,

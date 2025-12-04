@@ -18,15 +18,17 @@ export async function POST(request: Request) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Generate unique filename
+    // Determine upload directory based on search params or default
+    const { searchParams } = new URL(request.url);
+    const type = searchParams.get('type') || 'projects';
+    const uploadDir = join(process.cwd(), `public/uploads/${type}`);
     const filename = `${uuidv4()}-${file.name.replace(/\s+/g, '-')}`;
-    const uploadDir = join(process.cwd(), 'public/uploads/projects');
     const filepath = join(uploadDir, filename);
 
     await writeFile(filepath, buffer);
 
     // Return the public URL
-    const url = `/uploads/projects/${filename}`;
+    const url = `/uploads/${type}/${filename}`;
 
     return NextResponse.json({ url });
   } catch (error) {

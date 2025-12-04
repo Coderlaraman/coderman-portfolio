@@ -54,9 +54,9 @@ export function SkillsSection() {
   const skillsByCategory = categorizeSkills(skills);
   const categories = ['all', ...Object.keys(skillsByCategory)];
   
-  const filteredSkills = selectedCategory === 'all' 
+  const filteredSkills = (selectedCategory === 'all' 
     ? skills 
-    : skills.filter(skill => skill.category === selectedCategory);
+    : skills.filter(skill => skill.category === selectedCategory)).filter(skill => skill.visible);
 
   const getProficiencyColor = (proficiency: number) => {
     if (proficiency >= 90) return 'bg-accent-green';
@@ -175,8 +175,12 @@ export function SkillsSection() {
                 >
                   {/* Skill Icon */}
                   <div className="flex items-center justify-between mb-4">
-                    <div className={`p-3 rounded-lg bg-neutral-100 dark:bg-neutral-800 ${colorClass}`}>
-                      <Icon className="w-6 h-6" />
+                    <div className={`p-3 rounded-lg bg-neutral-100 dark:bg-neutral-800 ${colorClass} overflow-hidden w-12 h-12 flex items-center justify-center`}>
+                      {skill.icon && (skill.icon.startsWith('/') || skill.icon.startsWith('http')) ? (
+                        <img src={skill.icon} alt={skill.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Icon className="w-6 h-6" />
+                      )}
                     </div>
                     <div className="text-right">
                       <div className="text-2xl font-bold text-neutral-900 dark:text-white">

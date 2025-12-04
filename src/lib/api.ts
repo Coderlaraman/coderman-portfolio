@@ -117,11 +117,11 @@ export async function deleteSkill(id: string): Promise<void> {
 }
 
 // File Upload API
-export async function uploadFile(file: File): Promise<string> {
+export async function uploadFile(file: File, type: 'projects' | 'skills' = 'projects'): Promise<string> {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch(`${API_BASE_URL}/api/upload`, {
+  const response = await fetch(`${API_BASE_URL}/api/upload?type=${type}`, {
     method: 'POST',
     body: formData,
   });
