@@ -150,6 +150,20 @@ export async function createContactMessage(data: {
   });
 }
 
+// Resume API functions
+export async function getResume(): Promise<any> {
+  const url = `${API_BASE_URL}/api/resume`;
+  return fetchWithError<any>(url);
+}
+
+export async function saveResume(data: any): Promise<any> {
+  const url = `${API_BASE_URL}/api/resume`;
+  return fetchWithError<any>(url, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 // Utility function to get client IP address (for contact form)
 export function getClientIp(): Promise<string> {
   return fetch('https://api.ipify.org?format=json')

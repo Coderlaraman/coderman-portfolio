@@ -36,8 +36,13 @@ export function Navigation() {
   };
 
   const handleDownloadResume = () => {
-    // Replace with actual resume URL
-    window.open('/resume.pdf', '_blank');
+    // Use timestamp to bust browser cache
+    const link = document.createElement('a');
+    link.href = `/resume.pdf?v=${Date.now()}`;
+    link.download = 'Resume.pdf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleContactClick = () => {

@@ -57,8 +57,29 @@ export function HeroSection() {
     };
   }, [currentPhraseIndex]);
 
-  const handleDownloadResume = () => {
-    window.open('/resume.pdf', '_blank');
+  const handleDownloadResume = async () => {
+    try {
+      console.log('📥 Starting resume download...');
+      
+      // Fetch the latest resume data to get the filename if we wanted to be dynamic
+      // For now, we'll stick to the standard name but force a reload
+      
+      // Create a temporary link to trigger download
+      const link = document.createElement('a');
+      const url = `/resume.pdf?v=${Date.now()}`; // Cache busting
+      console.log('🔗 Download URL:', url);
+      
+      link.href = url;
+      link.download = 'Resume.pdf'; // Suggest a filename
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      console.log('✅ Download triggered successfully');
+    } catch (error) {
+      console.error('❌ Error downloading resume:', error);
+      window.open(`/resume.pdf?v=${Date.now()}`, '_blank');
+    }
   };
 
   const handleScrollToContact = () => {

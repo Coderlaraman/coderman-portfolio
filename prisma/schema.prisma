@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -15,10 +12,10 @@ model Project {
   title           String
   description     String   @db.Text
   fullDescription String   @db.Text
-  technologies    Json     // Stored as JSON array of strings
-  challenges      Json     // Stored as JSON array of strings
-  results         Json     // Stored as JSON array of strings
-  imageUrls       Json     // Stored as JSON array of strings
+  technologies    Json
+  challenges      Json
+  results         Json
+  imageUrls       Json
   projectUrl      String?
   codeUrl         String?
   order           Int      @default(0)
@@ -30,7 +27,7 @@ model Project {
 model Skill {
   id          String   @id @default(cuid())
   name        String
-  category    String   // 'backend' | 'frontend' | 'tools' | 'database' | 'other'
+  category    String
   proficiency Int
   icon        String?
   description String?
@@ -55,9 +52,9 @@ model ContactMessage {
 model SiteContent {
   id        String   @id @default(cuid())
   key       String
-  language  String   // 'en' | 'es'
+  language  String
   content   String   @db.Text
-  type      String   // 'bio' | 'tagline' | 'section_header' | 'button_text' | 'placeholder'
+  type      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -71,4 +68,20 @@ model AdminCode {
   expiresAt DateTime
   used      Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+model Resume {
+  id         String   @id @default(cuid())
+  fullName   String
+  title      String
+  summary    String   @db.Text
+  email      String
+  phone      String?
+  location   String?
+  website    String?
+  github     String?
+  linkedin   String?
+  experience Json
+  education  Json
+  updatedAt  DateTime @updatedAt
 }

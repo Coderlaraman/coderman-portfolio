@@ -9,7 +9,7 @@ import {
   getSkills, createSkill, updateSkill, deleteSkill,
   uploadFile 
 } from '@/lib/api';
-import { Plus, Edit, Trash2, Save, X, Eye, EyeOff, Upload, Loader2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, Eye, EyeOff, Upload, Loader2, RefreshCw } from 'lucide-react';
 
 // Tabs component
 const Tabs = ({ activeTab, setActiveTab }: { activeTab: string, setActiveTab: (tab: string) => void }) => (
@@ -33,6 +33,16 @@ const Tabs = ({ activeTab, setActiveTab }: { activeTab: string, setActiveTab: (t
       onClick={() => setActiveTab('skills')}
     >
       Skills
+    </button>
+    <button
+      className={`pb-2 px-4 font-medium transition-colors ${
+        activeTab === 'resume'
+          ? 'text-accent-blue border-b-2 border-accent-blue'
+          : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+      }`}
+      onClick={() => setActiveTab('resume')}
+    >
+      Resume (CV)
     </button>
   </div>
 );
@@ -210,10 +220,355 @@ export default function AdminPage() {
 
         {activeTab === 'projects' ? (
           <ProjectsManager projects={projects} setProjects={setProjects} />
-        ) : (
+        ) : activeTab === 'skills' ? (
           <SkillsManager skills={skills} setSkills={setSkills} />
+        ) : (
+          <ResumeManager />
         )}
       </div>
+    </div>
+  );
+}
+
+function ResumeManager() {
+  const [resume, setResume] = useState<any>({
+    fullName: '',
+    title: '',
+    summary: '',
+    email: '',
+    phone: '',
+    location: '',
+    website: '',
+    linkedin: '',
+    experience: [],
+    education: []
+  });
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetchResume();
+  }, []);
+
+  const fetchResume = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/resume');
+      if (res.ok) {
+        const data = await res.json();
+        if (Object.keys(data).length > 0) {
+          setResume(data);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching resume:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    console.log('🚀 Starting save process...');
+    console.log('📋 Resume data to save:', JSON.stringify(resume, null, 2));
+    
+    try {
+      console.log('📤 Sending POST request to /api/resume...');
+      const res = await fetch('/api/resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(resume),
+      });
+      
+      console.log('📥 Response received:', res.status, res.statusText);
+      
+      if (res.ok) {
+        const responseData = await res.json();
+        console.log('✅ Save successful, response data:', JSON.stringify(responseData, null, 2));
+        alert('Resume saved and PDF generated successfully!');
+      } else {
+        const errorData = await res.text();
+        console.error('❌ Save failed:', errorData);
+        alert('Failed to save resume');
+      }
+    } catch (error) {
+      console.error('❌ Error saving resume:', error);
+      alert('An error occurred');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addExperience = () => {
+    setResume({
+      ...resume,
+      experience: [...(resume.experience || []), { company: '', role: '', startDate: '', endDate: '', description: '' }]
+    });
+  };
+
+  const updateExperience = (index: number, field: string, value: string) => {
+    const newExperience = [...(resume.experience || [])];
+    newExperience[index] = { ...newExperience[index], [field]: value };
+    setResume({ ...resume, experience: newExperience });
+  };
+
+  const removeExperience = (index: number) => {
+    const newExperience = [...(resume.experience || [])];
+    newExperience.splice(index, 1);
+    setResume({ ...resume, experience: newExperience });
+  };
+
+  const addEducation = () => {
+    setResume({
+      ...resume,
+      education: [...(resume.education || []), { institution: '', degree: '', startDate: '', endDate: '', description: '' }]
+    });
+  };
+
+  const updateEducation = (index: number, field: string, value: string) => {
+    const newEducation = [...(resume.education || [])];
+    newEducation[index] = { ...newEducation[index], [field]: value };
+    setResume({ ...resume, education: newEducation });
+  };
+
+  const removeEducation = (index: number) => {
+    const newEducation = [...(resume.education || [])];
+    newEducation.splice(index, 1);
+    setResume({ ...resume, education: newEducation });
+  };
+
+  if (loading) return <div className="text-center py-8"><Loader2 className="w-8 h-8 animate-spin mx-auto" /></div>;
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-semibold">Resume Information</h2>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center px-4 py-2 bg-accent-blue text-white rounded hover:bg-accent-blue-dark transition-colors disabled:opacity-50"
+        >
+          {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+          Save & Generate PDF
+        </button>
+      </div>
+
+      <form onSubmit={handleSave} className="space-y-8">
+        {/* Personal Info */}
+        <div className="bg-white dark:bg-neutral-900 p-6 rounded-lg shadow space-y-4">
+          <h3 className="text-lg font-medium mb-4">Personal Details</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Full Name</label>
+              <input
+                value={resume.fullName || ''}
+                onChange={e => setResume({...resume, fullName: e.target.value})}
+                className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Professional Title</label>
+              <input
+                value={resume.title || ''}
+                onChange={e => setResume({...resume, title: e.target.value})}
+                className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+                required
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-1">Professional Summary</label>
+              <textarea
+                value={resume.summary || ''}
+                onChange={e => setResume({...resume, summary: e.target.value})}
+                className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 h-32"
+                required
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Contact Info */}
+        <div className="bg-white dark:bg-neutral-900 p-6 rounded-lg shadow space-y-4">
+          <h3 className="text-lg font-medium mb-4">Contact Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Email</label>
+              <input
+                value={resume.email || ''}
+                onChange={e => setResume({...resume, email: e.target.value})}
+                className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Phone</label>
+              <input
+                value={resume.phone || ''}
+                onChange={e => setResume({...resume, phone: e.target.value})}
+                className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Location</label>
+              <input
+                value={resume.location || ''}
+                onChange={e => setResume({...resume, location: e.target.value})}
+                className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Website</label>
+              <input
+                value={resume.website || ''}
+                onChange={e => setResume({...resume, website: e.target.value})}
+                className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">LinkedIn</label>
+              <input
+                value={resume.linkedin || ''}
+                onChange={e => setResume({...resume, linkedin: e.target.value})}
+                className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Experience */}
+        <div className="bg-white dark:bg-neutral-900 p-6 rounded-lg shadow space-y-4">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium">Experience</h3>
+            <button
+              type="button"
+              onClick={addExperience}
+              className="flex items-center px-3 py-1 bg-neutral-100 dark:bg-neutral-800 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 text-sm"
+            >
+              <Plus className="w-4 h-4 mr-1" /> Add Experience
+            </button>
+          </div>
+          
+          {resume.experience?.map((exp: any, index: number) => (
+            <div key={index} className="p-4 border border-neutral-200 dark:border-neutral-700 rounded relative">
+              <button
+                type="button"
+                onClick={() => removeExperience(index)}
+                className="absolute top-2 right-2 p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1">Company</label>
+                  <input
+                    value={exp.company}
+                    onChange={e => updateExperience(index, 'company', e.target.value)}
+                    className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">Role</label>
+                  <input
+                    value={exp.role}
+                    onChange={e => updateExperience(index, 'role', e.target.value)}
+                    className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">Start Date</label>
+                  <input
+                    value={exp.startDate}
+                    onChange={e => updateExperience(index, 'startDate', e.target.value)}
+                    className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+                    placeholder="e.g. Jan 2020"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">End Date</label>
+                  <input
+                    value={exp.endDate}
+                    onChange={e => updateExperience(index, 'endDate', e.target.value)}
+                    className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+                    placeholder="e.g. Present"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1">Description</label>
+                <textarea
+                  value={exp.description}
+                  onChange={e => updateExperience(index, 'description', e.target.value)}
+                  className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 h-24"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Education */}
+        <div className="bg-white dark:bg-neutral-900 p-6 rounded-lg shadow space-y-4">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium">Education</h3>
+            <button
+              type="button"
+              onClick={addEducation}
+              className="flex items-center px-3 py-1 bg-neutral-100 dark:bg-neutral-800 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 text-sm"
+            >
+              <Plus className="w-4 h-4 mr-1" /> Add Education
+            </button>
+          </div>
+          
+          {resume.education?.map((edu: any, index: number) => (
+            <div key={index} className="p-4 border border-neutral-200 dark:border-neutral-700 rounded relative">
+              <button
+                type="button"
+                onClick={() => removeEducation(index)}
+                className="absolute top-2 right-2 p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1">Institution</label>
+                  <input
+                    value={edu.institution}
+                    onChange={e => updateEducation(index, 'institution', e.target.value)}
+                    className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">Degree</label>
+                  <input
+                    value={edu.degree}
+                    onChange={e => updateEducation(index, 'degree', e.target.value)}
+                    className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">Start Date</label>
+                  <input
+                    value={edu.startDate}
+                    onChange={e => updateEducation(index, 'startDate', e.target.value)}
+                    className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+                    placeholder="e.g. 2016"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">End Date</label>
+                  <input
+                    value={edu.endDate}
+                    onChange={e => updateEducation(index, 'endDate', e.target.value)}
+                    className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+                    placeholder="e.g. 2020"
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </form>
     </div>
   );
 }
