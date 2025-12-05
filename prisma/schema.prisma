@@ -81,6 +81,7 @@ model Resume {
   website    String?
   github     String?
   linkedin   String?
+  photoUrl   String?
   experience Json
   education  Json
   skills     Json?

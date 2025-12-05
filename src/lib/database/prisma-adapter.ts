@@ -122,24 +122,69 @@ export class PrismaDatabaseAdapter implements DatabaseClient {
       take: options?.limit,
     });
 
-    return messages;
+    return messages.map(m => ({
+      id: m.id,
+      name: m.name,
+      email: m.email,
+      subject: m.subject ?? undefined,
+      message: m.message,
+      read: m.read,
+      createdAt: m.createdAt,
+      ipAddress: m.ipAddress ?? undefined,
+      userAgent: m.userAgent ?? undefined,
+    }));
   }
 
   async getContactMessageById(id: string): Promise<ContactMessage | null> {
-    return prisma.contactMessage.findUnique({ where: { id } });
+    const m = await prisma.contactMessage.findUnique({ where: { id } });
+    if (!m) return null;
+    return {
+      id: m.id,
+      name: m.name,
+      email: m.email,
+      subject: m.subject ?? undefined,
+      message: m.message,
+      read: m.read,
+      createdAt: m.createdAt,
+      ipAddress: m.ipAddress ?? undefined,
+      userAgent: m.userAgent ?? undefined,
+    };
   }
 
   async createContactMessage(message: Omit<ContactMessage, 'id' | 'createdAt' | 'read'>): Promise<ContactMessage> {
-    return prisma.contactMessage.create({
+    const m = await prisma.contactMessage.create({
       data: message,
     });
+    return {
+      id: m.id,
+      name: m.name,
+      email: m.email,
+      subject: m.subject ?? undefined,
+      message: m.message,
+      read: m.read,
+      createdAt: m.createdAt,
+      ipAddress: m.ipAddress ?? undefined,
+      userAgent: m.userAgent ?? undefined,
+    };
   }
 
   async markMessageAsRead(id: string): Promise<ContactMessage | null> {
-    return prisma.contactMessage.update({
+    const m = await prisma.contactMessage.update({
       where: { id },
       data: { read: true },
     });
+    if (!m) return null;
+    return {
+      id: m.id,
+      name: m.name,
+      email: m.email,
+      subject: m.subject ?? undefined,
+      message: m.message,
+      read: m.read,
+      createdAt: m.createdAt,
+      ipAddress: m.ipAddress ?? undefined,
+      userAgent: m.userAgent ?? undefined,
+    };
   }
 
   async deleteContactMessage(id: string): Promise<boolean> {

@@ -25,6 +25,8 @@ export async function POST(request: Request) {
     console.log('📥 POST /api/resume - Starting resume save process');
     const data = await request.json();
     console.log('📋 Received data:', JSON.stringify(data, null, 2));
+    // Ensure DB has required columns (handles environments not yet migrated)
+    await ensureResumeSchema();
     
     // Upsert resume (update if exists, create if not)
     // Since we only have one resume, we can just check if any exists
@@ -32,15 +34,43 @@ export async function POST(request: Request) {
     const existing = await (prisma as any).resume.findFirst();
     console.log('📊 Existing resume found:', !!existing);
     
+    // Normalize optional JSON fields to avoid schema mismatches
+    const normalized = {
+      ...data,
+      experience: Array.isArray((data as any).experience) ? (data as any).experience : [],
+      education: Array.isArray((data as any).education) ? (data as any).education : [],
+      skills: Array.isArray((data as any).skills)
+        ? (data as any).skills.map((s: any) => String(s)).filter(Boolean)
+        : typeof (data as any).skills === 'string'
+        ? (data as any).skills.split(',').map((s: string) => s.trim()).filter(Boolean)
+        : [],
+      languages: Array.isArray((data as any).languages)
+        ? (data as any).languages.map((l: any) =>
+            typeof l === 'string'
+              ? { language: l, proficiency: 'Professional' }
+              : { language: String(l.language || ''), proficiency: String(l.proficiency || 'Professional') }
+          )
+        : [],
+      projects: Array.isArray((data as any).projects)
+        ? (data as any).projects.map((p: any) => ({
+            name: String(p.name || ''),
+            technologies: String(p.technologies || ''),
+            year: String(p.year || ''),
+            description: String(p.description || ''),
+          }))
+        : [],
+    };
+
+    const columnSet = await getResumeColumns();
+    const dataToPersist = filterDataByColumns(normalized, columnSet);
+
     let resume;
     if (existing) {
       console.log('✏️ Updating existing resume with ID:', existing.id);
       resume = await (prisma as any).resume.update({
         where: { id: existing.id },
         data: {
-          ...data,
-          experience: data.experience || [],
-          education: data.education || [],
+          ...dataToPersist,
         },
       });
       console.log('✅ Resume updated successfully');
@@ -48,25 +78,31 @@ export async function POST(request: Request) {
       console.log('🆕 Creating new resume');
       resume = await (prisma as any).resume.create({
         data: {
-          ...data,
-          experience: data.experience || [],
-          education: data.education || [],
+          ...dataToPersist,
         },
       });
       console.log('✅ Resume created successfully');
     }
 
-    console.log('📄 Resume data for PDF generation:', JSON.stringify(resume, null, 2));
+    const resumeForPdf = {
+      ...resume,
+      photoUrl: (dataToPersist as any).photoUrl ?? (normalized as any).photoUrl ?? (resume as any).photoUrl,
+      skills: (dataToPersist as any).skills ?? (normalized as any).skills ?? (resume as any).skills,
+      languages: (dataToPersist as any).languages ?? (normalized as any).languages ?? (resume as any).languages,
+      projects: (dataToPersist as any).projects ?? (normalized as any).projects ?? (resume as any).projects,
+    };
+
+    console.log('📄 Resume data for PDF generation:', JSON.stringify(resumeForPdf, null, 2));
 
     // Generate PDF and report status to client
     let pdfGenerated = false;
     let pdfUrl: string | null = null;
     try {
       console.log('Starting PDF generation...');
-      const filename = resume.fullName
-        ? `${resume.fullName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_resume.pdf`
+      const filename = (resumeForPdf as any).fullName
+        ? `${String((resumeForPdf as any).fullName).replace(/[^a-z0-9]/gi, '_').toLowerCase()}_resume.pdf`
         : 'resume.pdf';
-      await generatePDF(resume);
+      await generatePDF(resumeForPdf);
       console.log('PDF generation completed successfully');
       const pdfPath = path.join(process.cwd(), 'public', 'resume.pdf');
       if (fs.existsSync(pdfPath)) {
@@ -80,14 +116,67 @@ export async function POST(request: Request) {
       console.error('Error generating PDF:', pdfError);
     }
 
-    return NextResponse.json({ ...resume, pdfGenerated, pdfUrl });
+    return NextResponse.json({ ...resumeForPdf, pdfGenerated, pdfUrl });
   } catch (error) {
-    console.error('Error saving resume:', error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Error saving resume:', message);
     return NextResponse.json(
-      { error: 'Failed to save resume' },
+      { error: 'Failed to save resume', reason: message },
       { status: 500 }
     );
   }
+}
+
+async function ensureResumeSchema() {
+  try {
+    const cols: any[] = await (prisma as any).$queryRaw`SHOW COLUMNS FROM Resume`;
+    const names = new Set(cols.map((c: any) => c.Field));
+    const alters: string[] = [];
+    if (!names.has('skills')) alters.push('ADD COLUMN skills JSON NULL');
+    if (!names.has('languages')) alters.push('ADD COLUMN languages JSON NULL');
+    if (!names.has('projects')) alters.push('ADD COLUMN projects JSON NULL');
+    if (!names.has('photoUrl')) alters.push('ADD COLUMN photoUrl VARCHAR(191) NULL');
+    if (alters.length) {
+      const sql = `ALTER TABLE Resume ${alters.join(', ')}`;
+      console.log('🔧 Applying schema fix:', sql);
+      await (prisma as any).$executeRawUnsafe(sql);
+      console.log('✅ Schema fix applied');
+    }
+  } catch (e: any) {
+    console.warn('⚠️ Could not verify/alter Resume schema:', e?.message || e);
+  }
+}
+
+// Fetch current columns for Resume table
+async function getResumeColumns(): Promise<Set<string> | null> {
+  try {
+    const cols: any[] = await (prisma as any).$queryRaw`SHOW COLUMNS FROM Resume`;
+    const names = new Set(cols.map((c: any) => c.Field));
+    console.log('🧾 Resume columns:', Array.from(names).join(', '));
+    return names;
+  } catch (e: any) {
+    console.warn('⚠️ Could not fetch Resume columns:', e?.message || e);
+    return null;
+  }
+}
+
+// Only include data keys that map to existing columns
+function filterDataByColumns(data: any, columns: Set<string> | null) {
+  if (!columns) {
+    const allowed = ['fullName','title','summary','email','phone','location','website','github','linkedin','experience','education'];
+    const filtered: any = {};
+    for (const key of allowed) {
+      if (key in data) filtered[key] = (data as any)[key];
+    }
+    console.log('⚖️ Using conservative payload (no column discovery)');
+    return filtered;
+  }
+  const filtered: any = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (columns.has(key)) filtered[key] = value;
+  }
+  console.log('✅ Filtered payload keys:', Object.keys(filtered).join(', '));
+  return filtered;
 }
 
 async function generatePDF(data: any) {
@@ -507,10 +596,8 @@ async function generatePDFFallback(data: any, filePath: string) {
   try {
     // Create a new PDF document
     const pdfDoc = await PDFDocument.create();
-    
-    // Add a page
-    const page = pdfDoc.addPage([595.28, 841.89]); // A4 size in points
-    const { width, height } = page.getSize();
+    let page = pdfDoc.addPage([595.28, 841.89]);
+    let { width, height } = page.getSize();
     
     // Embed fonts
     const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -523,21 +610,22 @@ async function generatePDFFallback(data: any, filePath: string) {
     const lightText = rgb(0.4, 0.4, 0.4); // Medium gray
     const veryLightText = rgb(0.7, 0.7, 0.7); // Light gray
     
-    let yPosition = height - 50; // Start from top
+    let yPosition = height - 50;
     const lineHeight = 20;
     const margin = 50;
+    const sectionSpacing = lineHeight * 1.8;
     
     // Professional Header Section
     const headerHeight = 120;
     const headerY = height - 50;
     
-    // Draw header background (simulated gradient with rectangle)
-    page.drawRectangle({
-      x: 0,
-      y: headerY - headerHeight,
-      width: width,
-      height: headerHeight,
-      color: primaryColor,
+    // Draw header background
+    page.drawRectangle({ x: 0, y: headerY - headerHeight, width, height: headerHeight, color: primaryColor });
+    page.drawLine({
+      start: { x: 0, y: headerY - headerHeight - 5 },
+      end: { x: width, y: headerY - headerHeight - 5 },
+      thickness: 1,
+      color: secondaryColor,
     });
     
     // Photo placeholder area (left side)
@@ -555,14 +643,37 @@ async function generatePDFFallback(data: any, filePath: string) {
       borderWidth: 3,
     });
     
-    // Photo placeholder text
-    page.drawText('PHOTO', {
-      x: photoX + 25,
-      y: photoY + 35,
-      size: 10,
-      font: helveticaFont,
-      color: rgb(1, 1, 1), // White text
-    });
+    // Photo: embed uploaded image if available, else placeholder text
+    if (data.photoUrl) {
+      try {
+        const imgPath = path.join(process.cwd(), 'public', String(data.photoUrl).replace(/^\//, ''));
+        const lower = imgPath.toLowerCase();
+        const bytes = fs.readFileSync(imgPath);
+        if (lower.endsWith('.png')) {
+          const embedded = await pdfDoc.embedPng(bytes);
+          page.drawImage(embedded, { x: photoX, y: photoY, width: photoSize, height: photoSize });
+        } else {
+          const embedded = await pdfDoc.embedJpg(bytes);
+          page.drawImage(embedded, { x: photoX, y: photoY, width: photoSize, height: photoSize });
+        }
+      } catch (e) {
+        page.drawText('PHOTO', {
+          x: photoX + 25,
+          y: photoY + 35,
+          size: 10,
+          font: helveticaFont,
+          color: rgb(1, 1, 1),
+        });
+      }
+    } else {
+      page.drawText('PHOTO', {
+        x: photoX + 25,
+        y: photoY + 35,
+        size: 10,
+        font: helveticaFont,
+        color: rgb(1, 1, 1),
+      });
+    }
     
     // Header text content (right side of photo)
     let headerTextX = photoX + photoSize + 30;
@@ -580,39 +691,62 @@ async function generatePDFFallback(data: any, filePath: string) {
       headerTextY -= 30;
     }
     
-    // Title
+    // Title (wrap up to 2 lines)
     if (data.title) {
-      page.drawText(data.title, {
-        x: headerTextX,
-        y: headerTextY,
-        size: 16,
-        font: helveticaFont,
-        color: secondaryColor, // Blue accent
-      });
-      headerTextY -= 25;
+      const maxTitleWidth = width - margin - headerTextX;
+      const words = String(data.title).split(' ');
+      let line = '';
+      let lines: string[] = [];
+      for (const w of words) {
+        const test = line + (line ? ' ' : '') + w;
+        const tw = helveticaFont.widthOfTextAtSize(test, 16);
+        if (tw > maxTitleWidth && line) {
+          lines.push(line);
+          line = w;
+        } else {
+          line = test;
+        }
+      }
+      if (line) lines.push(line);
+      lines = lines.slice(0, 2);
+      for (const l of lines) {
+        page.drawText(l, { x: headerTextX, y: headerTextY, size: 16, font: helveticaFont, color: secondaryColor });
+        headerTextY -= 18;
+      }
     }
     
-    // Contact information
-    const contactItems = [];
+    const contactItems: string[] = [];
     if (data.email) contactItems.push(data.email);
     if (data.phone) contactItems.push(data.phone);
     if (data.location) contactItems.push(data.location);
     if (data.website) contactItems.push(data.website);
-    if (data.linkedin) contactItems.push('LinkedIn');
+    if (data.github) contactItems.push(data.github);
+    if (data.linkedin) contactItems.push(data.linkedin);
     
     if (contactItems.length > 0) {
       const contactText = contactItems.join(' • ');
-      page.drawText(contactText, {
-        x: headerTextX,
-        y: headerTextY,
-        size: 10,
-        font: helveticaFont,
-        color: rgb(0.9, 0.9, 0.9), // Light gray
-      });
+      const allowedWidth = width - margin - headerTextX;
+      let line = '';
+      const words = contactText.split(' ');
+      for (const w of words) {
+        const test = line + (line ? ' ' : '') + w;
+        const tw = helveticaFont.widthOfTextAtSize(test, 10);
+        if (tw > allowedWidth && line) {
+          page.drawText(line, { x: headerTextX, y: headerTextY, size: 10, font: helveticaFont, color: rgb(0.9, 0.9, 0.9) });
+          headerTextY -= 14;
+          line = w;
+        } else {
+          line = test;
+        }
+      }
+      if (line) {
+        page.drawText(line, { x: headerTextX, y: headerTextY, size: 10, font: helveticaFont, color: rgb(0.9, 0.9, 0.9) });
+        headerTextY -= 14;
+      }
     }
     
     // Update yPosition for content after header
-    yPosition = height - headerHeight - 30;
+    yPosition = headerY - headerHeight - 45;
     
     // Professional Summary
     if (data.summary) {
@@ -693,8 +827,8 @@ async function generatePDFFallback(data: any, filePath: string) {
       
       for (const exp of data.experience) {
         if (yPosition < 100) {
-          // Add new page if we're running out of space
-          const newPage = pdfDoc.addPage([595.28, 841.89]);
+          page = pdfDoc.addPage([595.28, 841.89]);
+          ({ width, height } = page.getSize());
           yPosition = height - 50;
         }
         
@@ -761,13 +895,20 @@ async function generatePDFFallback(data: any, filePath: string) {
             yPosition -= lineHeight * 0.7;
           }
         }
-        yPosition -= lineHeight * 0.5;
+          yPosition -= lineHeight * 0.5;
       }
       yPosition -= lineHeight;
     }
     
     // Education
     if (data.education && data.education.length > 0) {
+      if (yPosition < 150) {
+        page = pdfDoc.addPage([595.28, 841.89]);
+        ({ width, height } = page.getSize());
+        yPosition = height - 50;
+      } else {
+        yPosition -= sectionSpacing;
+      }
       page.drawText('EDUCATION & CERTIFICATIONS', {
         x: margin,
         y: yPosition,
@@ -776,24 +917,20 @@ async function generatePDFFallback(data: any, filePath: string) {
         color: primaryColor,
       });
       yPosition -= lineHeight * 1.5;
-      
-      // Draw underline
       page.drawLine({
         start: { x: margin, y: yPosition + 5 },
         end: { x: margin + 200, y: yPosition + 5 },
         thickness: 1,
         color: secondaryColor,
       });
-      yPosition -= lineHeight * 0.5;
-      
+      yPosition -= lineHeight * 0.8;
+
       for (const edu of data.education) {
-        if (yPosition < 100) {
-          // Add new page if we're running out of space
-          const newPage = pdfDoc.addPage([595.28, 841.89]);
+        if (yPosition < 140) {
+          page = pdfDoc.addPage([595.28, 841.89]);
+          ({ width, height } = page.getSize());
           yPosition = height - 50;
         }
-        
-        // Degree as main title
         if (edu.degree) {
           page.drawText(edu.degree, {
             x: margin,
@@ -802,14 +939,11 @@ async function generatePDFFallback(data: any, filePath: string) {
             font: helveticaBoldFont,
             color: rgb(0, 0, 0),
           });
-          yPosition -= lineHeight * 0.8;
+          yPosition -= lineHeight * 0.9;
         }
-        
-        // Institution and dates as subtitle
         const institutionAndDates = [edu.institution, edu.startDate && edu.endDate ? `${edu.startDate} - ${edu.endDate}` : '']
           .filter(Boolean)
           .join(' • ');
-        
         if (institutionAndDates) {
           page.drawText(institutionAndDates, {
             x: margin,
@@ -818,18 +952,15 @@ async function generatePDFFallback(data: any, filePath: string) {
             font: helveticaFont,
             color: lightText,
           });
-          yPosition -= lineHeight * 0.8;
+          yPosition -= lineHeight * 0.9;
         }
-        
         if (edu.description) {
           const maxWidth = width - (margin * 2);
           const words = edu.description.split(' ');
           let currentLine = '';
-          
           for (const word of words) {
             const testLine = currentLine + (currentLine ? ' ' : '') + word;
             const textWidth = helveticaFont.widthOfTextAtSize(testLine, 10);
-            
             if (textWidth > maxWidth && currentLine) {
               page.drawText(currentLine, {
                 x: margin,
@@ -838,13 +969,12 @@ async function generatePDFFallback(data: any, filePath: string) {
                 font: helveticaFont,
                 color: rgb(0, 0, 0),
               });
-              yPosition -= lineHeight * 0.7;
+              yPosition -= lineHeight * 0.9;
               currentLine = word;
             } else {
               currentLine = testLine;
             }
           }
-          
           if (currentLine) {
             page.drawText(currentLine, {
               x: margin,
@@ -853,15 +983,21 @@ async function generatePDFFallback(data: any, filePath: string) {
               font: helveticaFont,
               color: rgb(0, 0, 0),
             });
-            yPosition -= lineHeight * 0.7;
+            yPosition -= lineHeight * 0.9;
           }
         }
-        yPosition -= lineHeight * 0.5;
+        yPosition -= lineHeight;
       }
     }
     
-    // Skills & Expertise
     if (data.skills && data.skills.length > 0) {
+      if (yPosition < 150) {
+        page = pdfDoc.addPage([595.28, 841.89]);
+        ({ width, height } = page.getSize());
+        yPosition = height - 50;
+      } else {
+        yPosition -= sectionSpacing;
+      }
       page.drawText('SKILLS & EXPERTISE', {
         x: margin,
         y: yPosition,
@@ -877,7 +1013,7 @@ async function generatePDFFallback(data: any, filePath: string) {
         thickness: 1,
         color: secondaryColor,
       });
-      yPosition -= lineHeight * 0.5;
+      yPosition -= lineHeight * 0.8;
       
       const maxWidth = width - (margin * 2);
       const skillText = data.skills.join(' • ');
@@ -893,7 +1029,7 @@ async function generatePDFFallback(data: any, filePath: string) {
             font: helveticaFont,
             color: rgb(0, 0, 0),
           });
-          yPosition -= lineHeight * 0.7;
+          yPosition -= lineHeight;
           currentLine = word;
         } else {
           currentLine = testLine;
@@ -907,13 +1043,19 @@ async function generatePDFFallback(data: any, filePath: string) {
           font: helveticaFont,
           color: rgb(0, 0, 0),
         });
-        yPosition -= lineHeight * 0.7;
+        yPosition -= lineHeight;
       }
-      yPosition -= lineHeight * 0.5;
+      yPosition -= sectionSpacing;
     }
     
-    // Languages
     if (data.languages && data.languages.length > 0) {
+      if (yPosition < 150) {
+        page = pdfDoc.addPage([595.28, 841.89]);
+        ({ width, height } = page.getSize());
+        yPosition = height - 50;
+      } else {
+        yPosition -= sectionSpacing;
+      }
       page.drawText('LANGUAGES', {
         x: margin,
         y: yPosition,
@@ -929,7 +1071,7 @@ async function generatePDFFallback(data: any, filePath: string) {
         thickness: 1,
         color: secondaryColor,
       });
-      yPosition -= lineHeight * 0.5;
+      yPosition -= lineHeight * 0.8;
       
       const maxWidth = width - (margin * 2);
       const langText = data.languages.map((l: any) => {
@@ -948,7 +1090,7 @@ async function generatePDFFallback(data: any, filePath: string) {
             font: helveticaFont,
             color: rgb(0, 0, 0),
           });
-          yPosition -= lineHeight * 0.7;
+          yPosition -= lineHeight;
           currentLine = word;
         } else {
           currentLine = testLine;
@@ -962,13 +1104,20 @@ async function generatePDFFallback(data: any, filePath: string) {
           font: helveticaFont,
           color: rgb(0, 0, 0),
         });
-        yPosition -= lineHeight * 0.7;
+        yPosition -= lineHeight;
       }
+      yPosition -= lineHeight;
       yPosition -= lineHeight * 0.5;
     }
     
-    // Projects & Achievements
     if (data.projects && data.projects.length > 0) {
+      if (yPosition < 150) {
+        page = pdfDoc.addPage([595.28, 841.89]);
+        ({ width, height } = page.getSize());
+        yPosition = height - 50;
+      } else {
+        yPosition -= sectionSpacing;
+      }
       page.drawText('PROJECTS & ACHIEVEMENTS', {
         x: margin,
         y: yPosition,
@@ -984,11 +1133,12 @@ async function generatePDFFallback(data: any, filePath: string) {
         thickness: 1,
         color: secondaryColor,
       });
-      yPosition -= lineHeight * 0.5;
+      yPosition -= lineHeight * 0.8;
       
       for (const project of data.projects) {
-        if (yPosition < 100) {
-          const newPage = pdfDoc.addPage([595.28, 841.89]);
+        if (yPosition < 140) {
+          page = pdfDoc.addPage([595.28, 841.89]);
+          ({ width, height } = page.getSize());
           yPosition = height - 50;
         }
         
@@ -1000,7 +1150,7 @@ async function generatePDFFallback(data: any, filePath: string) {
             font: helveticaBoldFont,
             color: rgb(0, 0, 0),
           });
-          yPosition -= lineHeight * 0.8;
+          yPosition -= lineHeight * 0.9;
         }
         
         const subtitle = [project.technologies, project.year ? `${project.year}` : '']
@@ -1014,7 +1164,7 @@ async function generatePDFFallback(data: any, filePath: string) {
             font: helveticaFont,
             color: lightText,
           });
-          yPosition -= lineHeight * 0.8;
+          yPosition -= lineHeight * 0.9;
         }
         
         if (project.description) {
@@ -1032,7 +1182,7 @@ async function generatePDFFallback(data: any, filePath: string) {
                 font: helveticaFont,
                 color: rgb(0, 0, 0),
               });
-              yPosition -= lineHeight * 0.7;
+              yPosition -= lineHeight * 0.9;
               currentLine = word;
             } else {
               currentLine = testLine;
@@ -1046,10 +1196,10 @@ async function generatePDFFallback(data: any, filePath: string) {
               font: helveticaFont,
               color: rgb(0, 0, 0),
             });
-            yPosition -= lineHeight * 0.7;
+            yPosition -= lineHeight * 0.9;
           }
         }
-        yPosition -= lineHeight * 0.5;
+        yPosition -= lineHeight;
       }
     }
     

@@ -25,6 +25,8 @@ export async function POST(request: Request) {
     const filename = `${uuidv4()}-${file.name.replace(/\s+/g, '-')}`;
     const filepath = join(uploadDir, filename);
 
+    // Ensure directory exists
+    await import('fs/promises').then(fs => fs.mkdir(uploadDir, { recursive: true }));
     await writeFile(filepath, buffer);
 
     // Return the public URL

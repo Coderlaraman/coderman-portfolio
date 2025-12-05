@@ -37,7 +37,9 @@ export async function POST(request: Request) {
       imageUrls: body.imageUrls || [],
       // Default order if not provided
       order: body.order || 0,
-      featured: body.featured || false
+      featured: body.featured || false,
+      projectUrl: body.projectUrl || null,
+      codeUrl: body.codeUrl || null,
     };
 
     const newProject = await db.createProject(projectData);

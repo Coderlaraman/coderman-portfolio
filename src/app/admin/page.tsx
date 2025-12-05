@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { 
@@ -240,11 +240,16 @@ function ResumeManager() {
     location: '',
     website: '',
     linkedin: '',
+    photoUrl: '',
     experience: [],
-    education: []
+    education: [],
+    skills: [],
+    languages: [],
+    projects: []
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     fetchResume();
@@ -338,6 +343,44 @@ function ResumeManager() {
     setResume({ ...resume, education: newEducation });
   };
 
+  const addLanguage = () => {
+    setResume({
+      ...resume,
+      languages: [...(resume.languages || []), { language: '', proficiency: '' }]
+    });
+  };
+
+  const updateLanguage = (index: number, field: string, value: string) => {
+    const newLanguages = [...(resume.languages || [])];
+    newLanguages[index] = { ...newLanguages[index], [field]: value };
+    setResume({ ...resume, languages: newLanguages });
+  };
+
+  const removeLanguage = (index: number) => {
+    const newLanguages = [...(resume.languages || [])];
+    newLanguages.splice(index, 1);
+    setResume({ ...resume, languages: newLanguages });
+  };
+
+  const addProjectItem = () => {
+    setResume({
+      ...resume,
+      projects: [...(resume.projects || []), { name: '', technologies: '', year: '', description: '' }]
+    });
+  };
+
+  const updateProjectItem = (index: number, field: string, value: string) => {
+    const newProjects = [...(resume.projects || [])];
+    newProjects[index] = { ...newProjects[index], [field]: value };
+    setResume({ ...resume, projects: newProjects });
+  };
+
+  const removeProjectItem = (index: number) => {
+    const newProjects = [...(resume.projects || [])];
+    newProjects.splice(index, 1);
+    setResume({ ...resume, projects: newProjects });
+  };
+
   if (loading) return <div className="text-center py-8"><Loader2 className="w-8 h-8 animate-spin mx-auto" /></div>;
 
   return (
@@ -385,6 +428,53 @@ function ResumeManager() {
                 className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 h-32"
                 required
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Photo</label>
+              <label
+                className="border-2 border-dashed border-neutral-300 dark:border-neutral-700 rounded-lg p-8 flex flex-col items-center justify-center text-neutral-500 dark:text-neutral-400 cursor-pointer hover:border-accent-blue transition-colors"
+                onClick={() => photoInputRef.current?.click()}
+              >
+                {resume.photoUrl ? (
+                  <div className="w-full flex items-center justify-between mb-3">
+                    <span className="text-sm truncate">{resume.photoUrl}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setResume({ ...resume, photoUrl: '' }); }}
+                      className="text-red-500 text-sm"
+                    >Remove</button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center select-none">
+                    <Upload className="w-8 h-8 mb-2 text-neutral-400" />
+                    <span className="text-sm">Subir Imagen</span>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={photoInputRef}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const formData = new FormData();
+                      formData.append('file', file);
+                      const res = await fetch('/api/upload?type=resume', { method: 'POST', body: formData });
+                      if (res.ok) {
+                        const data = await res.json();
+                        setResume({ ...resume, photoUrl: data.url });
+                      } else {
+                        alert('Failed to upload photo');
+                      }
+                    } catch (err) {
+                      console.error('Photo upload failed', err);
+                      alert('Photo upload failed');
+                    }
+                  }}
+                  className="hidden"
+                />
+              </label>
             </div>
           </div>
         </div>
@@ -434,6 +524,20 @@ function ResumeManager() {
                 className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Skills & Expertise */}
+        <div className="bg-white dark:bg-neutral-900 p-6 rounded-lg shadow space-y-4">
+          <h3 className="text-lg font-medium mb-4">Skills & Expertise</h3>
+          <div>
+            <label className="block text-sm font-medium mb-1">Skills (comma-separated)</label>
+            <textarea
+              value={(resume.skills || []).join(', ')}
+              onChange={e => setResume({ ...resume, skills: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+              className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 h-24"
+              placeholder="JavaScript, TypeScript, React, Node.js"
+            />
           </div>
         </div>
 
@@ -568,6 +672,111 @@ function ResumeManager() {
             </div>
           ))}
         </div>
+
+        {/* Languages */}
+        <div className="bg-white dark:bg-neutral-900 p-6 rounded-lg shadow space-y-4">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium">Languages</h3>
+            <button
+              type="button"
+              onClick={addLanguage}
+              className="flex items-center px-3 py-1 bg-neutral-100 dark:bg-neutral-800 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 text-sm"
+            >
+              <Plus className="w-4 h-4 mr-1" /> Add Language
+            </button>
+          </div>
+          {(resume.languages || []).map((lng: any, index: number) => (
+            <div key={index} className="p-4 border border-neutral-200 dark:border-neutral-700 rounded relative">
+              <button
+                type="button"
+                onClick={() => removeLanguage(index)}
+                className="absolute top-2 right-2 p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1">Language</label>
+                  <input
+                    value={lng.language || ''}
+                    onChange={e => updateLanguage(index, 'language', e.target.value)}
+                    className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">Proficiency</label>
+                  <input
+                    value={lng.proficiency || ''}
+                    onChange={e => updateLanguage(index, 'proficiency', e.target.value)}
+                    className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+                    placeholder="e.g. Native, Advanced, Intermediate"
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Projects & Achievements */}
+        <div className="bg-white dark:bg-neutral-900 p-6 rounded-lg shadow space-y-4">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium">Projects & Achievements</h3>
+            <button
+              type="button"
+              onClick={addProjectItem}
+              className="flex items-center px-3 py-1 bg-neutral-100 dark:bg-neutral-800 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 text-sm"
+            >
+              <Plus className="w-4 h-4 mr-1" /> Add Project/Achievement
+            </button>
+          </div>
+          {(resume.projects || []).map((pr: any, index: number) => (
+            <div key={index} className="p-4 border border-neutral-200 dark:border-neutral-700 rounded relative">
+              <button
+                type="button"
+                onClick={() => removeProjectItem(index)}
+                className="absolute top-2 right-2 p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1">Name</label>
+                  <input
+                    value={pr.name || ''}
+                    onChange={e => updateProjectItem(index, 'name', e.target.value)}
+                    className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">Year</label>
+                  <input
+                    value={pr.year || ''}
+                    onChange={e => updateProjectItem(index, 'year', e.target.value)}
+                    className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+                    placeholder="e.g. 2023"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-medium mb-1">Technologies</label>
+                  <input
+                    value={pr.technologies || ''}
+                    onChange={e => updateProjectItem(index, 'technologies', e.target.value)}
+                    className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800"
+                    placeholder="React, Node.js, AWS"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1">Description</label>
+                <textarea
+                  value={pr.description || ''}
+                  onChange={e => updateProjectItem(index, 'description', e.target.value)}
+                  className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 h-24"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
       </form>
     </div>
   );
@@ -677,6 +886,15 @@ function ProjectsManager({ projects, setProjects }: { projects: Project[], setPr
                     value={formData.projectUrl || ''}
                     onChange={e => setFormData({...formData, projectUrl: e.target.value})}
                     className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Code Repository (GitHub)</label>
+                  <input
+                    value={formData.codeUrl || ''}
+                    onChange={e => setFormData({...formData, codeUrl: e.target.value})}
+                    className="w-full p-2 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent"
+                    placeholder="https://github.com/usuario/repositorio"
                   />
                 </div>
               </div>
