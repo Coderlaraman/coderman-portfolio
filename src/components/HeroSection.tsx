@@ -60,21 +60,20 @@ export function HeroSection() {
   const handleDownloadResume = async () => {
     try {
       console.log('📥 Starting resume download...');
-      
-      // Fetch the latest resume data to get the filename if we wanted to be dynamic
-      // For now, we'll stick to the standard name but force a reload
-      
-      // Create a temporary link to trigger download
+      const res = await fetch('/api/resume');
+      let url = `/resume.pdf?v=${Date.now()}`;
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.pdfUrl) {
+          url = `${data.pdfUrl}?v=${Date.now()}`;
+        }
+      }
       const link = document.createElement('a');
-      const url = `/resume.pdf?v=${Date.now()}`; // Cache busting
-      console.log('🔗 Download URL:', url);
-      
       link.href = url;
-      link.download = 'Resume.pdf'; // Suggest a filename
+      link.download = 'Resume.pdf';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
       console.log('✅ Download triggered successfully');
     } catch (error) {
       console.error('❌ Error downloading resume:', error);

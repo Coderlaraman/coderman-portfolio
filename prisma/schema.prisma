@@ -83,5 +83,8 @@ model Resume {
   linkedin   String?
   experience Json
   education  Json
+  skills     Json?
+  languages  Json?
+  projects   Json?
   updatedAt  DateTime @updatedAt
 }
