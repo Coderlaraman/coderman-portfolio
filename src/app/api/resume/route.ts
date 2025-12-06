@@ -163,7 +163,7 @@ async function getResumeColumns(): Promise<Set<string> | null> {
 // Only include data keys that map to existing columns
 function filterDataByColumns(data: any, columns: Set<string> | null) {
   if (!columns) {
-    const allowed = ['fullName','title','summary','email','phone','location','website','github','linkedin','experience','education'];
+    const allowed = ['fullName','title','summary','email','phone','location','website','github','linkedin','photoUrl','experience','education','skills','languages','projects'];
     const filtered: any = {};
     for (const key of allowed) {
       if (key in data) filtered[key] = (data as any)[key];
@@ -236,19 +236,19 @@ async function generatePDF(data: any) {
           .header {
             display: flex;
             align-items: center;
-            padding: 40px;
+            padding: 30px;
             background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
             color: white;
             position: relative;
           }
           
           .photo-container {
-            width: 120px;
-            height: 120px;
+            width: 100px;
+            height: 100px;
             border-radius: 50%;
             background: #ecf0f1;
-            border: 4px solid #fff;
-            margin-right: 30px;
+            border: 3px solid #fff;
+            margin-right: 25px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -273,24 +273,24 @@ async function generatePDF(data: any) {
           }
           
           .name { 
-            font-size: 32px; 
+            font-size: 28px; 
             font-weight: 700; 
-            margin-bottom: 8px;
+            margin-bottom: 5px;
             letter-spacing: -0.5px;
           }
           
           .title { 
-            font-size: 18px; 
+            font-size: 16px; 
             color: #3498db; 
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             font-weight: 400;
           }
           
           .contact-info {
             display: flex;
             flex-wrap: wrap;
-            gap: 15px;
-            font-size: 14px;
+            gap: 12px;
+            font-size: 13px;
             color: #ecf0f1;
           }
           
@@ -308,84 +308,89 @@ async function generatePDF(data: any) {
           
           /* Main Content */
           .content {
-            padding: 40px;
+            padding: 20px 40px;
           }
           
           /* Section Styling */
           .section { 
-            margin-bottom: 35px; 
+            margin-bottom: 20px; 
+            page-break-inside: avoid;
           }
           
           .section-title { 
-            font-size: 18px; 
-            font-weight: 600; 
+            font-size: 16px; 
+            font-weight: 700; 
             color: #2c3e50;
-            margin-bottom: 15px;
-            padding-bottom: 8px;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
             border-bottom: 2px solid #3498db;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
           }
           
           /* Summary Section */
           .summary-text {
-            font-size: 14px;
-            line-height: 1.8;
-            color: #555;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #333;
             text-align: justify;
+            margin-bottom: 5px;
           }
           
           /* Experience and Education Items */
           .item { 
-            margin-bottom: 25px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-left: 4px solid #3498db;
-            border-radius: 0 8px 8px 0;
-            transition: all 0.3s ease;
+            margin-bottom: 12px;
+            padding: 0;
+            background: transparent;
+            border-left: none;
+            border-radius: 0;
+            transition: none;
+            page-break-inside: avoid;
           }
           
           .item:hover {
-            background: #e8f4f8;
-            transform: translateX(5px);
+            background: transparent;
+            transform: none;
           }
           
           .item-title { 
-            font-size: 16px; 
-            font-weight: 600; 
+            font-size: 14px; 
+            font-weight: 700; 
             color: #2c3e50;
-            margin-bottom: 5px;
+            margin-bottom: 2px;
           }
           
           .item-subtitle { 
-            font-size: 14px; 
-            color: #3498db; 
-            font-weight: 500;
-            margin-bottom: 10px;
+            font-size: 12px; 
+            color: #7f8c8d; 
+            font-weight: 400;
+            margin-bottom: 4px;
+            font-style: italic;
           }
           
           .item-description { 
-            font-size: 13px; 
-            color: #666; 
-            line-height: 1.6;
-            margin-top: 8px;
+            font-size: 12px; 
+            color: #333; 
+            line-height: 1.4;
+            margin-top: 4px;
           }
           
           /* Skills Section */
           .skills-container {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 10px;
+            gap: 6px;
+            margin-top: 5px;
           }
           
           .skill-tag {
-            background: #3498db;
-            color: white;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 500;
+            background: #eef2f5;
+            color: #2c3e50;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            border: 1px solid #dce4e8;
           }
           
           /* Responsive adjustments */
@@ -477,7 +482,7 @@ async function generatePDF(data: any) {
         ${data.languages && data.languages.length > 0 ? `
           <div class="section">
             <div class="section-title">Languages</div>
-            <div style="font-size: 14px; color: #555;">
+            <div style="font-size: 14px; color: #555; margin-top: 10px; margin-bottom: 12px;">
               ${data.languages.map((lang: any) => `${lang.language || lang} (${lang.proficiency || 'Professional'})`).join(' • ')}
             </div>
           </div>
@@ -606,9 +611,7 @@ async function generatePDFFallback(data: any, filePath: string) {
     // Professional colors
     const primaryColor = rgb(0.173, 0.243, 0.314); // #2c3e50
     const secondaryColor = rgb(0.204, 0.596, 0.859); // #3498db
-    const textColor = rgb(0.2, 0.2, 0.2); // Dark gray
     const lightText = rgb(0.4, 0.4, 0.4); // Medium gray
-    const veryLightText = rgb(0.7, 0.7, 0.7); // Light gray
     
     let yPosition = height - 50;
     const lineHeight = 20;
@@ -656,7 +659,7 @@ async function generatePDFFallback(data: any, filePath: string) {
           const embedded = await pdfDoc.embedJpg(bytes);
           page.drawImage(embedded, { x: photoX, y: photoY, width: photoSize, height: photoSize });
         }
-      } catch (e) {
+      } catch (_e) {
         page.drawText('PHOTO', {
           x: photoX + 25,
           y: photoY + 35,
@@ -676,7 +679,7 @@ async function generatePDFFallback(data: any, filePath: string) {
     }
     
     // Header text content (right side of photo)
-    let headerTextX = photoX + photoSize + 30;
+    const headerTextX = photoX + photoSize + 30;
     let headerTextY = headerY - 30;
     
     // Name
