@@ -8,6 +8,10 @@ const nextConfig = {
     domains: ['localhost'],
     formats: ['image/webp', 'image/avif'],
   },
+  // Configuración para Prisma
+  experimental: {
+    serverComponentsExternalPackages: ['@prisma/client']
+  },
   // Headers de seguridad
   async headers() {
     return [
