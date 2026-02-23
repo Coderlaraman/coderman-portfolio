@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next"
+import { Analytics } from "@vercel/analytics/next"
 
 const firaCode = Fira_Code({
   variable: "--font-fira-code",
@@ -55,6 +56,7 @@ export default function RootLayout({
           </LanguageProvider>
         </ThemeProvider>
         <SpeedInsights/>
+        <Analytics/>
       </body>
     </html>
   );
